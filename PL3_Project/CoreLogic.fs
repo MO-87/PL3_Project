@@ -3,6 +3,10 @@ namespace CinemaBooking
 open System
 
 module CoreLogic =
+
+    let private generateTicketId () = 
+        "TKT-" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper()
+
     let initializeCinema rows cols : CinemaState =
         let vipStartRow = rows - 2 
         let seats = Array2D.init rows cols (fun r c -> 
@@ -20,7 +24,17 @@ module CoreLogic =
 
         { Seats = seats; Rows = rows; Cols = cols }
 
-
+    let resetCinema (state: CinemaState) =
+        Storage.clearHistory()
+        
+        for r in 0 .. state.Rows - 1 do
+            for c in 0 .. state.Cols - 1 do
+                let current = state.Seats.[r, c]
+                // Preserve Tier and Price, just reset Status
+                state.Seats.[r, c] <- { current with Status = Available }
+        
+        Ok "System Reset Successful"
+    
     let toggleSelection (state: CinemaState) (row: int) (col: int) =
         if row < 0 || row >= state.Rows || col < 0 || col >= state.Cols then
             Error "Invalid seat coordinates."
@@ -41,7 +55,7 @@ module CoreLogic =
                 let newSeatState = { currentSeat with Status = Selected }
                 state.Seats.[row, col] <- newSeatState
                 Ok newSeatState
-                
+
     let confirmBooking (state: CinemaState) =
         let mutable target : Seat option = None
         for r in 0 .. state.Rows - 1 do
@@ -59,4 +73,3 @@ module CoreLogic =
             Storage.saveTicket ticket
             Ok ticket
         | None -> Error "No seat selected."
-
